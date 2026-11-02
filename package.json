@@ -1,0 +1,1 @@
+{"description":"BuyScout - an agentic commerce copilot with a spending-trust layer (PayPal AI Hackathon)","engines":{"node":">=22.6"},"name":"buyscout","private":true,"scripts":{"dev":"node --watch src/server.ts","smoke":"node test/smoke.ts","start":"node src/server.ts"},"type":"module","version":"0.1.0"}

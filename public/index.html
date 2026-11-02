@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BuyScout — an agent that shops within your rules</title>
+<style>
+  :root {
+    color-scheme: light;
+    --blue: #0070e0;
+    --blue-dark: #005ea6;
+    --navy: #003087;
+    --ink: #17202a;
+    --muted: #5b6b7a;
+    --faint: #8496a5;
+    --line: #e2e8f0;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --watch-bg: #e1efff;  --watch-fg: #005ea6;
+    --pend-bg: #fff3cd;   --pend-fg: #856404;
+    --buy-bg: #d7f5dd;    --buy-fg: #11652a;
+    --ref-bg: #fde3e0;    --ref-fg: #8c2b1e;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(16, 42, 67, .05), 0 4px 16px rgba(16, 42, 67, .06);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-size: 15px; line-height: 1.5;
+  }
+
+  /* ---------- Header ---------- */
+  .site-header {
+    background: var(--card); border-bottom: 1px solid var(--line);
+  }
+  .site-header .wrap {
+    display: flex; align-items: center; gap: 12px; padding-top: 14px; padding-bottom: 14px;
+  }
+  .logo {
+    width: 34px; height: 34px; border-radius: 9px; flex: 0 0 auto;
+    background: linear-gradient(135deg, var(--navy), var(--blue));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 18px; font-weight: 800; letter-spacing: -.02em;
+  }
+  .brand { font-size: 19px; font-weight: 800; letter-spacing: -.01em; }
+  .brand span { color: var(--blue); }
+  .site-header .spacer { flex: 1 1 auto; }
+  .badge {
+    background: #ffc439; color: #17202a; border-radius: 999px; padding: 3px 11px;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: linear-gradient(120deg, #00215e 0%, var(--navy) 45%, var(--blue) 100%);
+    color: #fff; padding: 38px 0 64px;
+  }
+  .hero h1 { margin: 0 0 8px; font-size: 32px; line-height: 1.15; letter-spacing: -.02em; max-width: 640px; }
+  .hero p { margin: 0; font-size: 16.5px; opacity: .88; max-width: 620px; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
+
+  /* ---------- How it works ---------- */
+  .steps {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin-top: -38px; position: relative;
+  }
+  .step {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 18px; display: flex; gap: 12px; align-items: flex-start;
+  }
+  .step .num {
+    flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--watch-bg); color: var(--blue-dark);
+    font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center;
+  }
+  .step h3 { margin: 1px 0 3px; font-size: 14.5px; }
+  .step p { margin: 0; font-size: 13.5px; color: var(--muted); }
+
+  /* ---------- Layout & cards ---------- */
+  main { display: grid; gap: 18px; padding-top: 22px; padding-bottom: 12px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px 22px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 16.5px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+  .card .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+  .card .sub:last-child { margin-bottom: 0; }
+
+  /* ---------- Policy (trust layer) ---------- */
+  .trust { border-top: 3px solid var(--blue); }
+  .tiers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 16px; }
+  .tier { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; background: #fbfcfe; }
+  .tier strong { display: block; font-size: 13px; margin-bottom: 2px; }
+  .tier.auto strong { color: var(--buy-fg); }
+  .tier.ask strong { color: var(--pend-fg); }
+  .tier p { margin: 0; color: var(--muted); }
+  .policy-row { border-top: 1px solid var(--line); padding-top: 14px; }
+  .policy-row label { font-weight: 600; font-size: 13.5px; }
+
+  /* ---------- Forms & buttons ---------- */
+  textarea, input[type="text"], input[type="number"] {
+    width: 100%; padding: 9px 11px; border: 1px solid #c3ccd3; border-radius: 8px;
+    font: inherit; font-size: 14.5px; background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 64px; resize: vertical; }
+  textarea:focus, input:focus { outline: 2px solid var(--blue); outline-offset: 1px; border-color: var(--blue); }
+  button {
+    background: var(--blue); color: #fff; border: 0; border-radius: 8px; padding: 9px 15px;
+    font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer;
+  }
+  button:hover { background: var(--blue-dark); }
+  button:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  button.secondary { background: #e8edf1; color: var(--ink); }
+  button.secondary:hover { background: #d9e1e8; }
+  button.danger { background: #c0392b; }
+  button.danger:hover { background: #a93226; }
+  button.small { padding: 5px 11px; font-size: 13px; border-radius: 7px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row > * { flex: 0 0 auto; }
+  .grow { flex: 1 1 auto; }
+
+  /* ---------- Tables ---------- */
+  #missions, #listings, #audit { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #edf1f4; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: 0; }
+  th { color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+
+  /* ---------- Status pills ---------- */
+  .status {
+    font-weight: 700; font-size: 12px; padding: 2px 9px; border-radius: 999px;
+    background: #e8edf1; color: var(--muted); white-space: nowrap; display: inline-block;
+  }
+  .status.watching { background: var(--watch-bg); color: var(--watch-fg); }
+  .status.approval_pending { background: var(--pend-bg); color: var(--pend-fg); }
+  .status.purchased { background: var(--buy-bg); color: var(--buy-fg); }
+  .status.refunded { background: var(--ref-bg); color: var(--ref-fg); }
+
+  /* ---------- Approvals ---------- */
+  .approval {
+    border: 1px solid #f0d48a; background: #fffaf0; border-radius: 10px;
+    padding: 13px 15px; margin-bottom: 10px;
+  }
+  .approval:last-child { margin-bottom: 0; }
+  .approval .money { font-size: 16px; font-weight: 700; }
+
+  .empty { color: var(--faint); font-size: 13.5px; margin: 2px 0; }
+  .preview {
+    background: #f7f9fb; border: 1px dashed #b9c6d2; border-radius: 8px;
+    padding: 11px 13px; font-size: 13.5px; margin-top: 12px;
+  }
+  .muted { color: var(--muted); }
+  .money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  code { background: #eef1f4; padding: 1px 5px; border-radius: 4px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  /* ---------- Footer ---------- */
+  footer { color: var(--faint); font-size: 12.5px; text-align: center; padding: 14px 20px 34px; }
+  footer p { margin: 0; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 860px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr; margin-top: -30px; }
+    .hero { padding-bottom: 52px; }
+    .hero h1 { font-size: 26px; }
+    .hero p { font-size: 15px; }
+    .card { padding: 16px; }
+    .tiers { grid-template-columns: 1fr; }
+    table { min-width: 560px; }
+    #audit table { min-width: 480px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <div class="logo" aria-hidden="true">B</div>
+    <div class="brand">Buy<span>Scout</span></div>
+    <div class="spacer"></div>
+    <span class="badge" id="modeBadge">…</span>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <h1>An agent that shops within your rules</h1>
+    <p>BuyScout watches prices and buys through PayPal on your behalf — but only inside a spending policy you set. Budget caps, approval tiers, and a full audit trail on every purchase.</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="steps" aria-label="How it works">
+    <div class="step">
+      <div class="num">1</div>
+      <div>
+        <h3>Describe a mission</h3>
+        <p>“Buy Sony WH-1000XM5 headphones, target $120.” Plain language in, structured mission out.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <div>
+        <h3>BuyScout watches prices</h3>
+        <p>The agent tracks listings against your target and logs what it sees — nothing happens until the price hits.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <div>
+        <h3>It buys — or asks first</h3>
+        <p>At or under your auto-buy cap, it checks out via PayPal instantly. Above the cap, the checkout waits for your approval.</p>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div class="grid-2">
+      <section class="card trust">
+        <h2>Autonomy policy</h2>
+        <p class="sub">The agent only buys inside the policy you set — and every decision it makes is written to the audit log below.</p>
+        <div class="tiers">
+          <div class="tier auto">
+            <strong>At or under the cap — auto-buy</strong>
+            <p>The agent checks out instantly via PayPal. No human in the loop.</p>
+          </div>
+          <div class="tier ask">
+            <strong>Above the cap — approval required</strong>
+            <p>The checkout is prepared and parked in the approvals queue. No money moves until you click Approve.</p>
+          </div>
+        </div>
+        <div class="row policy-row">
+          <label for="capInput">Auto-buy cap (USD)</label>
+          <input type="number" id="capInput" min="0" step="1" style="width:130px" />
+          <button id="savePolicyBtn" class="small">Save policy</button>
+          <span class="muted" id="policyNote"></span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>New mission</h2>
+        <p class="sub">Describe what to buy in plain language. Example: “Buy Sony WH-1000XM5 headphones, target $120” or “Get a LEGO Icons Bonsai Tree set under $80”.</p>
+        <textarea id="missionText" placeholder="Buy Sony WH-1000XM5 headphones, target $120"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button id="parseBtn" class="secondary">Preview parse</button>
+          <button id="createBtn">Start watching</button>
+          <span class="muted" id="createNote"></span>
+        </div>
+        <div class="preview" id="parsePreview" style="display:none"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Approvals queue</h2>
+      <p class="sub">Checkouts above your auto-buy cap wait here. Approving executes the PayPal order.</p>
+      <div id="approvals"><p class="empty">Nothing waiting for approval.</p></div>
+    </section>
+
+    <section class="card">
+      <h2>Missions</h2>
+      <p class="sub">Live status for every mission — current best price, policy outcome, and the PayPal order behind it.</p>
+      <div id="missions"><p class="empty">No missions yet.</p></div>
+    </section>
+
+    <section class="card">
+      <h2>Catalog (demo feed)</h2>
+      <p class="sub">The watcher tracks these listings. Use the simulator to drop a price and watch the agent react.</p>
+      <div id="listings"></div>
+    </section>
+
+    <section class="card">
+      <h2>Audit log</h2>
+      <p class="sub">Every price hit, policy decision, PayPal order, and refund — in order.</p>
+      <div id="audit"><p class="empty">No events yet.</p></div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <p>BuyScout runs against the PayPal sandbox or in mock mode — no real money moves in this demo.</p>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (n, cur) => (n === null || n === undefined) ? "—" : `${cur || "USD"} ${Number(n).toFixed(2)}`;
+
+async function api(path, method, body) {
+  const res = await fetch(path, {
+    method: method || "GET",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+let state = null;
+
+function render() {
+  if (!state) return;
+  $("modeBadge").textContent = "PayPal: " + state.paypalMode;
+  if (document.activeElement !== $("capInput")) $("capInput").value = state.policy.autoBuyCap;
+  $("policyNote").textContent = `Agent auto-buys totals up to ${money(state.policy.autoBuyCap, state.policy.currency)} per mission.`;
+
+  // Approvals
+  const pending = state.approvals.filter((a) => a.status === "pending");
+  $("approvals").innerHTML = pending.length ? pending.map((a) => `
+    <div class="approval">
+      <strong>${esc(a.listingTitle)}</strong><br />
+      <span class="money">${money(a.total, a.currency)}</span>
+      <span class="muted">(${money(a.unitPrice, a.currency)} × ${a.quantity}) — above your auto-buy cap</span>
+      <div class="row" style="margin-top:8px">
+        <button class="small" onclick="approve('${a.id}')">Approve &amp; pay with PayPal</button>
+        <button class="small secondary" onclick="reject('${a.id}')">Reject</button>
+      </div>
+    </div>`).join("") : '<p class="empty">Nothing waiting for approval.</p>';
+
+  // Missions
+  $("missions").innerHTML = state.missions.length ? `
+    <table><thead><tr><th>Mission</th><th>Target</th><th>Best price now</th><th>Status</th><th>PayPal order</th><th></th></tr></thead>
+    <tbody>${state.missions.map((m) => {
+      const listing = state.listings.find((l) => l.id === m.listingId);
+      const refundBtn = m.status === "purchased" && m.orderId
+        ? `<button class="small danger" onclick="refundOrder('${m.orderId}')">Refund</button>` : "";
+      return `<tr>
+        <td><strong>${esc(m.itemQuery)}</strong> ×${m.quantity}<br /><span class="muted">${esc(m.rawText)}</span></td>
+        <td class="money">${money(m.targetPrice, m.currency)}</td>
+        <td>${m.lastPrice !== null ? `<span class="money">${money(m.lastPrice, m.currency)}</span><br /><span class="muted">${esc(listing ? listing.title : "")}</span>` : "—"}</td>
+        <td><span class="status ${m.status}">${esc(m.status.replace("_", " "))}</span></td>
+        <td>${m.orderId ? `<code>${esc(m.orderId)}</code><br /><span class="money">${money(m.paidTotal, m.currency)}</span>` : "—"}</td>
+        <td><div class="row">${refundBtn}<button class="small secondary" onclick="deleteMission('${m.id}')">Delete</button></div></td>
+      </tr>`;
+    }).join("")}</tbody></table>` : '<p class="empty">No missions yet.</p>';
+
+  // Listings
+  $("listings").innerHTML = `
+    <table><thead><tr><th>Listing</th><th>Seller</th><th>Price</th><th>Simulate drop</th></tr></thead>
+    <tbody>${state.listings.map((l) => `<tr>
+      <td>${esc(l.title)}</td><td>${esc(l.seller)}</td>
+      <td class="money">${money(l.price, l.currency)}</td>
+      <td><div class="row">
+        <button class="small secondary" onclick="dropPrice('${l.id}', ${l.price}, 0.8)">Drop 20%</button>
+        <input type="number" id="price-${l.id}" min="0" step="0.01" placeholder="Set $" style="width:90px" />
+        <button class="small secondary" onclick="setPrice('${l.id}')">Set</button>
+      </div></td></tr>`).join("")}</tbody></table>`;
+
+  // Audit
+  $("audit").innerHTML = state.audit.length ? `
+    <table><thead><tr><th>Time</th><th>Event</th><th>Details</th></tr></thead>
+    <tbody>${state.audit.slice(0, 60).map((e) => `<tr>
+      <td class="muted" style="white-space:nowrap">${esc(new Date(e.ts).toLocaleTimeString())}</td>
+      <td><code>${esc(e.event)}</code></td>
+      <td>${esc(e.details)}</td></tr>`).join("")}</tbody></table>` : '<p class="empty">No events yet.</p>';
+}
+
+async function refresh() {
+  try { state = await api("/api/state"); render(); } catch (e) { console.error(e); }
+}
+
+async function approve(id) { await api(`/api/approvals/${id}/approve`, "POST"); refresh(); }
+async function reject(id) { await api(`/api/approvals/${id}/reject`, "POST"); refresh(); }
+async function refundOrder(orderId) { await api(`/api/orders/${orderId}/refund`, "POST"); refresh(); }
+async function deleteMission(id) { await api(`/api/missions/${id}`, "DELETE"); refresh(); }
+async function dropPrice(id, current, factor) { await api("/api/simulate/price", "POST", { listingId: id, price: Math.round(current * factor * 100) / 100 }); refresh(); }
+async function setPrice(id) {
+  const v = parseFloat($("price-" + id).value);
+  if (!Number.isFinite(v)) return;
+  await api("/api/simulate/price", "POST", { listingId: id, price: v }); refresh();
+}
+
+$("parseBtn").addEventListener("click", async () => {
+  const text = $("missionText").value.trim();
+  if (!text) return;
+  const { parsed } = await api("/api/parse", "POST", { text });
+  const el = $("parsePreview");
+  el.style.display = "block";
+  el.innerHTML = `<strong>Parsed mission</strong> (via ${esc(parsed.source)}): item “${esc(parsed.itemQuery)}”, ` +
+    `target ${money(parsed.targetPrice, parsed.currency)}, max ${money(parsed.maxPrice, parsed.currency)}, quantity ${parsed.quantity}.`;
+});
+
+$("createBtn").addEventListener("click", async () => {
+  const text = $("missionText").value.trim();
+  if (!text) return;
+  try {
+    await api("/api/missions", "POST", { text });
+    $("createNote").textContent = "Mission is live — the agent is watching.";
+    $("missionText").value = "";
+    $("parsePreview").style.display = "none";
+  } catch (e) {
+    $("createNote").textContent = e.message;
+  }
+  refresh();
+});
+
+$("savePolicyBtn").addEventListener("click", async () => {
+  const cap = parseFloat($("capInput").value);
+  if (!Number.isFinite(cap) || cap < 0) return;
+  await api("/api/policy", "PUT", { autoBuyCap: cap });
+  refresh();
+});
+
+refresh();
+setInterval(refresh, 2500);
+</script>
+</body>
+</html>
